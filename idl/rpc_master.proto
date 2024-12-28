@@ -20,6 +20,10 @@ enum Event {
   EVENT_START_FRPC = 12;
   EVENT_STOP_FRPS = 13;
   EVENT_START_FRPS = 14;
+  EVENT_START_STREAM_LOG = 15;
+  EVENT_STOP_STREAM_LOG = 16;
+  EVENT_START_PTY_CONNECT = 17;
+  EVENT_GET_PROXY_INFO = 18;
 }
 
 message ServerBase {
@@ -77,9 +81,54 @@ message FRPAuthResponse {
   bool ok = 2;
 }
 
+message PushProxyInfoReq {
+  ServerBase base = 255;
+  repeated common.ProxyInfo proxy_infos = 1;
+}
+
+message PushProxyInfoResp {
+  common.Status status = 1;
+}
+
+message PushServerStreamLogReq {
+  bytes log = 1;
+  ServerBase base = 255;
+}
+
+message PushClientStreamLogReq {
+  bytes log = 1;
+  ClientBase base = 255;
+}
+
+message PushStreamLogResp {
+  common.Status status = 1;
+  bool ok = 2;
+}
+
+message PTYClientMessage {
+  optional bytes data = 1;
+  string session_id = 2;
+  bool done = 3;
+  oneof Base {
+    ServerBase server_base = 254;
+    ClientBase client_base = 255;
+  }
+}
+
+message PTYServerMessage {
+  optional bytes data = 1;
+  optional int32 height = 2;
+  optional int32 width = 3;
+  bool done = 4;
+}
+
 service Master {
   rpc ServerSend(stream ClientMessage) returns(stream ServerMessage);
   rpc PullClientConfig(PullClientConfigReq) returns(PullClientConfigResp);
   rpc PullServerConfig(PullServerConfigReq) returns(PullServerConfigResp);
   rpc FRPCAuth(FRPAuthRequest) returns(FRPAuthResponse);
+  rpc PushProxyInfo(PushProxyInfoReq) returns(PushProxyInfoResp);
+  rpc PushClientStreamLog(stream PushClientStreamLogReq) returns(PushStreamLogResp);
+  rpc PushServerStreamLog(stream PushServerStreamLogReq) returns(PushStreamLogResp);
+  rpc PTYConnect(stream PTYClientMessage) returns(stream PTYServerMessage);
 }

@@ -7,6 +7,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/VaalaCat/frp-panel/logger"
 	"github.com/VaalaCat/frp-panel/utils"
 	"github.com/fatedier/frp/client"
 	"github.com/fatedier/frp/client/proxy"
@@ -28,7 +29,7 @@ type ClientHandler interface {
 	AddVisitor(v1.VisitorConfigurer)
 	RemoveProxy(v1.ProxyConfigurer)
 	RemoveVisitor(v1.VisitorConfigurer)
-	GetProxyStatus(string) (*proxy.WorkingStatus, error)
+	GetProxyStatus(string) (*proxy.WorkingStatus, bool)
 	GetCommonCfg() *v1.ClientCommonConfig
 	GetProxyCfgs() map[string]v1.ProxyConfigurer
 	GetVisitorCfgs() map[string]v1.VisitorConfigurer
@@ -50,8 +51,9 @@ var (
 func InitGlobalClientService(commonCfg *v1.ClientCommonConfig,
 	proxyCfgs []v1.ProxyConfigurer,
 	visitorCfgs []v1.VisitorConfigurer) {
+	ctx := context.Background()
 	if cli != nil {
-		logrus.Warn("client has been initialized")
+		logger.Logger(ctx).Warn("client has been initialized")
 		return
 	}
 	cli = NewClientHandler(commonCfg, proxyCfgs, visitorCfgs)
@@ -67,23 +69,24 @@ func GetGlobalClientSerivce() ClientHandler {
 func NewClientHandler(commonCfg *v1.ClientCommonConfig,
 	proxyCfgs []v1.ProxyConfigurer,
 	visitorCfgs []v1.VisitorConfigurer) *Client {
+	ctx := context.Background()
 
 	warning, err := validation.ValidateAllClientConfig(commonCfg, proxyCfgs, visitorCfgs)
 	if warning != nil {
-		logrus.WithError(err).Warnf("validate client config warning: %+v", warning)
+		logger.Logger(ctx).WithError(err).Warnf("validate client config warning: %+v", warning)
 	}
 	if err != nil {
-		logrus.Panic(err)
+		logger.Logger(ctx).Panic(err)
 	}
 
-	log.InitLog(commonCfg.Log.To, commonCfg.Log.Level, commonCfg.Log.MaxDays, commonCfg.Log.DisablePrintColor)
+	log.InitLogger(commonCfg.Log.To, commonCfg.Log.Level, int(commonCfg.Log.MaxDays), commonCfg.Log.DisablePrintColor)
 	cli, err := client.NewService(client.ServiceOptions{
 		Common:      commonCfg,
 		ProxyCfgs:   proxyCfgs,
 		VisitorCfgs: visitorCfgs,
 	})
 	if err != nil {
-		logrus.Panic(err)
+		logger.Logger(ctx).Panic(err)
 	}
 
 	return &Client{
@@ -96,12 +99,14 @@ func NewClientHandler(commonCfg *v1.ClientCommonConfig,
 
 func (c *Client) Run() {
 	if c.running {
+		logger.Logger(context.Background()).Warn("client is running, skip run")
 		return
 	}
 
 	shouldGracefulClose := c.Common.Transport.Protocol == "kcp" || c.Common.Transport.Protocol == "quic"
 	if shouldGracefulClose {
-		go handleTermSignal(c.cli)
+		var wg conc.WaitGroup
+		wg.Go(func() { handleTermSignal(c.cli) })
 	}
 	c.running = true
 	c.done = make(chan bool)
@@ -111,14 +116,14 @@ func (c *Client) Run() {
 		close(c.done)
 	}()
 
-	wg := conc.NewWaitGroup()
-	wg.Go(
-		func() {
-			if err := c.cli.Run(context.Background()); err != nil {
-				logrus.Errorf("run client error: %v", err)
-			}
-		},
-	)
+	var wg conc.WaitGroup
+	wg.Go(func() {
+		ctx := context.Background()
+		logger.Logger(ctx).Infof("start to run client")
+		if err := c.cli.Run(ctx); err != nil {
+			logger.Logger(ctx).Errorf("run client error: %v", err)
+		}
+	})
 	wg.Wait()
 }
 
@@ -160,8 +165,8 @@ func (c *Client) RemoveVisitor(visitorCfg v1.VisitorConfigurer) {
 	c.cli.UpdateAllConfigurer(lo.Values(c.ProxyCfgs), lo.Values(c.VisitorCfgs))
 }
 
-func (c *Client) GetProxyStatus(name string) (*proxy.WorkingStatus, error) {
-	return c.cli.GetProxyStatus(name)
+func (c *Client) GetProxyStatus(name string) (*proxy.WorkingStatus, bool) {
+	return c.cli.StatusExporter().GetProxyStatus(name)
 }
 
 func (c *Client) GetCommonCfg() *v1.ClientCommonConfig {

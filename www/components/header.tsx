@@ -1,20 +1,51 @@
-import { TbBuildingTunnel } from 'react-icons/tb'
 import { Button } from './ui/button'
 import { useStore } from '@nanostores/react'
 import { useRouter } from 'next/router'
-import { $platformInfo, $userInfo } from '@/store/user'
+import { $platformInfo, $userInfo, $statusOnline, $token } from '@/store/user'
 import { getUserInfo } from '@/api/user'
 import { useQuery } from '@tanstack/react-query'
-import { useEffect } from 'react'
-import Gravatar from 'react-gravatar'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { LOCAL_STORAGE_TOKEN_KEY } from '@/lib/consts'
-import { logout } from '@/api/auth'
+import { useEffect, useState } from 'react'
 import { getPlatformInfo } from '@/api/platform'
+import { useTranslation } from 'react-i18next'
+import { LanguageSwitcher } from './language-switcher'
 
-export const Header = () => {
+export const Header = ({ title }: { title?: string }) => {
+  const router = useRouter()
+  const isOnline = useStore($statusOnline)
+  const token = useStore($token)
+  const currentPath = router.pathname
+
+  const {isPending} = useQuery({
+    queryKey: ['userInfo', currentPath],
+    queryFn: getUserInfo,
+    retry: false,
+  })
+
+  useEffect(() => {
+    // 只有在初始化完成后才进行状态检查和跳转
+    if (!isPending) {
+      console.log('isInitializing', isOnline, token, currentPath)
+      // 如果用户未登录且不在登录/注册页面，则跳转到登录页
+      const isAuthPage = ['/login', '/register'].includes(currentPath)
+      if ((!token || !isOnline) && !isAuthPage) {
+        router.push('/login')
+      }
+    }
+  }, [token, isOnline, router, isPending, currentPath])
+
+  return (
+    <div className="flex w-full justify-between items-center gap-2">
+      {title && <p className='font-bold'>{title}</p>}
+      {!title && <p></p>}
+      <LanguageSwitcher />
+    </div>
+  )
+}
+
+export const RegisterAndLogin = () => {
   const router = useRouter()
   const userInfo = useStore($userInfo)
+  const { t } = useTranslation()
 
   const platformInfo = useQuery({
     queryKey: ['platformInfo'],
@@ -25,58 +56,28 @@ export const Header = () => {
     $platformInfo.set(platformInfo.data)
   }, [platformInfo])
 
-  const userInfoQuery = useQuery({
+  const {data: userInfoQuery} = useQuery({
     queryKey: ['userInfo'],
     queryFn: getUserInfo,
   })
 
   useEffect(() => {
-    $userInfo.set(userInfoQuery.data?.userInfo)
+    $userInfo.set(userInfoQuery?.userInfo)
+    $statusOnline.set(!!userInfoQuery?.userInfo)
   }, [userInfoQuery])
 
-  const redirToHome = () => {
-    router.push('/')
-  }
-
   return (
-    <div className="flex flex-row h-10 items-center px-4 border-b">
-      <TbBuildingTunnel />
-      <p className="ml-2 font-mono" onClick={redirToHome}>
-        frp-panel
-      </p>
+    <>
       {!userInfo && (
-        <Button variant={'ghost'} className="ml-auto" size={'sm'} onClick={() => router.push('/login')}>
-          登录
+        <Button variant="ghost" size="sm" onClick={() => router.push('/login')}>
+          {t('common.login')}
         </Button>
       )}
       {!userInfo && (
-        <Button variant={'ghost'} className="ml-2" size={'sm'} onClick={() => router.push('/register')}>
-          注册
+        <Button variant="ghost" size="sm" onClick={() => router.push('/register')}>
+          {t('common.register')}
         </Button>
       )}
-      {userInfo && (
-        <Button
-          variant={'ghost'}
-          className="ml-auto"
-          size={'sm'}
-          onClick={async () => {
-            $userInfo.set(undefined)
-            localStorage.removeItem(LOCAL_STORAGE_TOKEN_KEY)
-            await logout()
-            window.location.reload()
-          }}
-        >
-          退出
-        </Button>
-      )}
-      {userInfo && (
-        <Avatar className="ml-2 w-7 h-7">
-          <AvatarImage alt={'@' + userInfo.userName} asChild>
-            <Gravatar email={userInfo.email} />
-          </AvatarImage>
-          <AvatarFallback>{userInfo.userName}</AvatarFallback>
-        </Avatar>
-      )}
-    </div>
+    </>
   )
 }

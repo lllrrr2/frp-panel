@@ -1,7 +1,9 @@
 package models
 
 import (
-	"github.com/sirupsen/logrus"
+	"context"
+
+	"github.com/VaalaCat/frp-panel/logger"
 	"gorm.io/gorm"
 )
 
@@ -10,27 +12,38 @@ type DBManager interface {
 	GetDefaultDB() *gorm.DB
 	SetDB(dbType string, db *gorm.DB)
 	RemoveDB(dbType string)
+	SetDebug(bool)
 	Init()
 }
 
 type dbManagerImpl struct {
 	DBs           map[string]*gorm.DB // key: db type
 	defaultDBType string
+	debug         bool
 }
 
 func (dbm *dbManagerImpl) Init() {
 	for _, db := range dbm.DBs {
 		if err := db.AutoMigrate(&Client{}); err != nil {
-			logrus.WithError(err).Fatalf("cannot init db table [%s]", (&Client{}).TableName())
+			logger.Logger(context.Background()).WithError(err).Fatalf("cannot init db table [%s]", (&Client{}).TableName())
 		}
 		if err := db.AutoMigrate(&User{}); err != nil {
-			logrus.WithError(err).Fatalf("cannot init db table [%s]", (&User{}).TableName())
+			logger.Logger(context.Background()).WithError(err).Fatalf("cannot init db table [%s]", (&User{}).TableName())
 		}
 		if err := db.AutoMigrate(&Server{}); err != nil {
-			logrus.WithError(err).Fatalf("cannot init db table [%s]", (&Server{}).TableName())
+			logger.Logger(context.Background()).WithError(err).Fatalf("cannot init db table [%s]", (&Server{}).TableName())
 		}
 		if err := db.AutoMigrate(&Cert{}); err != nil {
-			logrus.WithError(err).Fatalf("cannot init db table [%s]", (&Cert{}).TableName())
+			logger.Logger(context.Background()).WithError(err).Fatalf("cannot init db table [%s]", (&Cert{}).TableName())
+		}
+		if err := db.AutoMigrate(&ProxyStats{}); err != nil {
+			logger.Logger(context.Background()).WithError(err).Fatalf("cannot init db table [%s]", (&ProxyStats{}).TableName())
+		}
+		if err := db.AutoMigrate(&HistoryProxyStats{}); err != nil {
+			logger.Logger(context.Background()).WithError(err).Fatalf("cannot init db table [%s]", (&HistoryProxyStats{}).TableName())
+		}
+		if err := db.AutoMigrate(&ProxyConfig{}); err != nil {
+			logger.Logger(context.Background()).WithError(err).Fatalf("cannot init db table [%s]", (&ProxyConfig{}).TableName())
 		}
 	}
 }
@@ -75,5 +88,13 @@ func (dbm *dbManagerImpl) RemoveDB(dbType string) {
 }
 
 func (dbm *dbManagerImpl) GetDefaultDB() *gorm.DB {
-	return dbm.DBs[dbm.defaultDBType]
+	db := dbm.DBs[dbm.defaultDBType]
+	if dbm.debug {
+		return db.Debug()
+	}
+	return db
+}
+
+func (dbm *dbManagerImpl) SetDebug(debug bool) {
+	dbm.debug = debug
 }

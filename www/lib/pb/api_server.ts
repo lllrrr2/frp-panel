@@ -10,6 +10,7 @@ import { UnknownFieldHandler } from "@protobuf-ts/runtime";
 import type { PartialMessage } from "@protobuf-ts/runtime";
 import { reflectionMergePartial } from "@protobuf-ts/runtime";
 import { MessageType } from "@protobuf-ts/runtime";
+import { ProxyInfo } from "./common";
 import { Server } from "./common";
 import { Status } from "./common";
 /**
@@ -54,6 +55,10 @@ export interface ListServersRequest {
      * @generated from protobuf field: optional int32 page_size = 2;
      */
     pageSize?: number;
+    /**
+     * @generated from protobuf field: optional string keyword = 3;
+     */
+    keyword?: string;
 }
 /**
  * @generated from protobuf message api_server.ListServersResponse
@@ -128,6 +133,10 @@ export interface UpdateFRPSRequest {
      * @generated from protobuf field: optional string comment = 3;
      */
     comment?: string;
+    /**
+     * @generated from protobuf field: optional string server_ip = 4;
+     */
+    serverIp?: string;
 }
 /**
  * @generated from protobuf message api_server.UpdateFRPSResponse
@@ -191,6 +200,28 @@ export interface StartFRPSResponse {
      * @generated from protobuf field: optional common.Status status = 1;
      */
     status?: Status;
+}
+/**
+ * @generated from protobuf message api_server.GetProxyStatsByServerIDRequest
+ */
+export interface GetProxyStatsByServerIDRequest {
+    /**
+     * @generated from protobuf field: optional string server_id = 1;
+     */
+    serverId?: string;
+}
+/**
+ * @generated from protobuf message api_server.GetProxyStatsByServerIDResponse
+ */
+export interface GetProxyStatsByServerIDResponse {
+    /**
+     * @generated from protobuf field: optional common.Status status = 1;
+     */
+    status?: Status;
+    /**
+     * @generated from protobuf field: repeated common.ProxyInfo proxy_infos = 2;
+     */
+    proxyInfos: ProxyInfo[];
 }
 // @generated message type with reflection information, may provide speed optimized methods
 class InitServerRequest$Type extends MessageType<InitServerRequest> {
@@ -310,7 +341,8 @@ class ListServersRequest$Type extends MessageType<ListServersRequest> {
     constructor() {
         super("api_server.ListServersRequest", [
             { no: 1, name: "page", kind: "scalar", opt: true, T: 5 /*ScalarType.INT32*/ },
-            { no: 2, name: "page_size", kind: "scalar", opt: true, T: 5 /*ScalarType.INT32*/ }
+            { no: 2, name: "page_size", kind: "scalar", opt: true, T: 5 /*ScalarType.INT32*/ },
+            { no: 3, name: "keyword", kind: "scalar", opt: true, T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<ListServersRequest>): ListServersRequest {
@@ -330,6 +362,9 @@ class ListServersRequest$Type extends MessageType<ListServersRequest> {
                 case /* optional int32 page_size */ 2:
                     message.pageSize = reader.int32();
                     break;
+                case /* optional string keyword */ 3:
+                    message.keyword = reader.string();
+                    break;
                 default:
                     let u = options.readUnknownField;
                     if (u === "throw")
@@ -348,6 +383,9 @@ class ListServersRequest$Type extends MessageType<ListServersRequest> {
         /* optional int32 page_size = 2; */
         if (message.pageSize !== undefined)
             writer.tag(2, WireType.Varint).int32(message.pageSize);
+        /* optional string keyword = 3; */
+        if (message.keyword !== undefined)
+            writer.tag(3, WireType.LengthDelimited).string(message.keyword);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -616,7 +654,8 @@ class UpdateFRPSRequest$Type extends MessageType<UpdateFRPSRequest> {
         super("api_server.UpdateFRPSRequest", [
             { no: 1, name: "server_id", kind: "scalar", opt: true, T: 9 /*ScalarType.STRING*/ },
             { no: 2, name: "config", kind: "scalar", opt: true, T: 12 /*ScalarType.BYTES*/ },
-            { no: 3, name: "comment", kind: "scalar", opt: true, T: 9 /*ScalarType.STRING*/ }
+            { no: 3, name: "comment", kind: "scalar", opt: true, T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "server_ip", kind: "scalar", opt: true, T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<UpdateFRPSRequest>): UpdateFRPSRequest {
@@ -639,6 +678,9 @@ class UpdateFRPSRequest$Type extends MessageType<UpdateFRPSRequest> {
                 case /* optional string comment */ 3:
                     message.comment = reader.string();
                     break;
+                case /* optional string server_ip */ 4:
+                    message.serverIp = reader.string();
+                    break;
                 default:
                     let u = options.readUnknownField;
                     if (u === "throw")
@@ -660,6 +702,9 @@ class UpdateFRPSRequest$Type extends MessageType<UpdateFRPSRequest> {
         /* optional string comment = 3; */
         if (message.comment !== undefined)
             writer.tag(3, WireType.LengthDelimited).string(message.comment);
+        /* optional string server_ip = 4; */
+        if (message.serverIp !== undefined)
+            writer.tag(4, WireType.LengthDelimited).string(message.serverIp);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -992,3 +1037,103 @@ class StartFRPSResponse$Type extends MessageType<StartFRPSResponse> {
  * @generated MessageType for protobuf message api_server.StartFRPSResponse
  */
 export const StartFRPSResponse = new StartFRPSResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class GetProxyStatsByServerIDRequest$Type extends MessageType<GetProxyStatsByServerIDRequest> {
+    constructor() {
+        super("api_server.GetProxyStatsByServerIDRequest", [
+            { no: 1, name: "server_id", kind: "scalar", opt: true, T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<GetProxyStatsByServerIDRequest>): GetProxyStatsByServerIDRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        if (value !== undefined)
+            reflectionMergePartial<GetProxyStatsByServerIDRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: GetProxyStatsByServerIDRequest): GetProxyStatsByServerIDRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* optional string server_id */ 1:
+                    message.serverId = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: GetProxyStatsByServerIDRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* optional string server_id = 1; */
+        if (message.serverId !== undefined)
+            writer.tag(1, WireType.LengthDelimited).string(message.serverId);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message api_server.GetProxyStatsByServerIDRequest
+ */
+export const GetProxyStatsByServerIDRequest = new GetProxyStatsByServerIDRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class GetProxyStatsByServerIDResponse$Type extends MessageType<GetProxyStatsByServerIDResponse> {
+    constructor() {
+        super("api_server.GetProxyStatsByServerIDResponse", [
+            { no: 1, name: "status", kind: "message", T: () => Status },
+            { no: 2, name: "proxy_infos", kind: "message", repeat: 1 /*RepeatType.PACKED*/, T: () => ProxyInfo }
+        ]);
+    }
+    create(value?: PartialMessage<GetProxyStatsByServerIDResponse>): GetProxyStatsByServerIDResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.proxyInfos = [];
+        if (value !== undefined)
+            reflectionMergePartial<GetProxyStatsByServerIDResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: GetProxyStatsByServerIDResponse): GetProxyStatsByServerIDResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* optional common.Status status */ 1:
+                    message.status = Status.internalBinaryRead(reader, reader.uint32(), options, message.status);
+                    break;
+                case /* repeated common.ProxyInfo proxy_infos */ 2:
+                    message.proxyInfos.push(ProxyInfo.internalBinaryRead(reader, reader.uint32(), options));
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: GetProxyStatsByServerIDResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* optional common.Status status = 1; */
+        if (message.status)
+            Status.internalBinaryWrite(message.status, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* repeated common.ProxyInfo proxy_infos = 2; */
+        for (let i = 0; i < message.proxyInfos.length; i++)
+            ProxyInfo.internalBinaryWrite(message.proxyInfos[i], writer.tag(2, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message api_server.GetProxyStatsByServerIDResponse
+ */
+export const GetProxyStatsByServerIDResponse = new GetProxyStatsByServerIDResponse$Type();
