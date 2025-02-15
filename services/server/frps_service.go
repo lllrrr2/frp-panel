@@ -2,7 +2,9 @@ package server
 
 import (
 	"context"
+	"sync"
 
+	"github.com/VaalaCat/frp-panel/logger"
 	v1 "github.com/fatedier/frp/pkg/config/v1"
 	"github.com/fatedier/frp/pkg/config/v1/validation"
 	"github.com/fatedier/frp/pkg/metrics/mem"
@@ -15,13 +17,16 @@ import (
 type ServerHandler interface {
 	Run()
 	Stop()
+	IsFirstSync() bool
 	GetCommonCfg() *v1.ServerConfig
 	GetMem() *mem.ServerStats
+	GetProxyStatsByType(v1.ProxyType) []*mem.ProxyStats
 }
 
 type Server struct {
-	srv    *server.Service
-	Common *v1.ServerConfig
+	srv       *server.Service
+	Common    *v1.ServerConfig
+	firstSync sync.Once
 }
 
 var (
@@ -29,8 +34,9 @@ var (
 )
 
 func InitGlobalServerService(svrCfg *v1.ServerConfig) {
+	ctx := context.Background()
 	if srv != nil {
-		logrus.Warn("server has been initialized")
+		logger.Logger(ctx).Warn("server has been initialized")
 		return
 	}
 
@@ -53,23 +59,24 @@ func GetServerSerivce(svrCfg *v1.ServerConfig) ServerHandler {
 func NewServerHandler(svrCfg *v1.ServerConfig) *Server {
 	warning, err := validation.ValidateServerConfig(svrCfg)
 	if warning != nil {
-		logrus.WithError(err).Warnf("validate server config warning: %+v", warning)
+		logger.Logger(context.Background()).WithError(err).Warnf("validate server config warning: %+v", warning)
 	}
 	if err != nil {
 		logrus.Panic(err)
 	}
 
-	log.InitLog(svrCfg.Log.To, svrCfg.Log.Level, svrCfg.Log.MaxDays, svrCfg.Log.DisablePrintColor)
+	log.InitLogger(svrCfg.Log.To, svrCfg.Log.Level, int(svrCfg.Log.MaxDays), svrCfg.Log.DisablePrintColor)
 
 	var svr *server.Service
 
 	if svr, err = server.NewService(svrCfg); err != nil {
-		logrus.WithError(err).Panic("cannot create server, exit and restart")
+		logger.Logger(context.Background()).WithError(err).Panic("cannot create server, exit and restart")
 	}
 
 	return &Server{
-		srv:    svr,
-		Common: svrCfg,
+		srv:       svr,
+		Common:    svrCfg,
+		firstSync: sync.Once{},
 	}
 }
 
@@ -80,13 +87,14 @@ func (s *Server) Run() {
 }
 
 func (s *Server) Stop() {
+	c := context.Background()
 	wg := conc.NewWaitGroup()
 	wg.Go(func() {
 		err := s.srv.Close()
 		if err != nil {
-			logrus.Errorf("close server error: %v", err)
+			logger.Logger(c).Errorf("close server error: %v", err)
 		}
-		logrus.Infof("server closed")
+		logger.Logger(c).Infof("server closed")
 	})
 	wg.Wait()
 }
@@ -97,4 +105,16 @@ func (s *Server) GetCommonCfg() *v1.ServerConfig {
 
 func (s *Server) GetMem() *mem.ServerStats {
 	return mem.StatsCollector.GetServer()
+}
+
+func (s *Server) GetProxyStatsByType(proxyType v1.ProxyType) []*mem.ProxyStats {
+	return mem.StatsCollector.GetProxiesByType(string(proxyType))
+}
+
+func (s *Server) IsFirstSync() bool {
+	result := false
+	s.firstSync.Do(func() {
+		result = true
+	})
+	return result
 }

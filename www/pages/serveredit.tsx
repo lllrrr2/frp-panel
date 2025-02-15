@@ -1,19 +1,18 @@
 import { Providers } from '@/components/providers'
 import { RootLayout } from '@/components/layout'
 import { Header } from '@/components/header'
-import { SideBar } from '@/components/sidebar'
-import { FRPSFormCard } from '@/components/frps_card'
+import { FRPSFormCard } from '@/components/frps/frps_card'
 
 export default function ServerListPage() {
   return (
-    <RootLayout header={<Header />} sidebar={<SideBar />}>
-      <Providers>
-        <div className="w-full">
-          <div className="flex-1 flex-col">
+    <Providers>
+      <RootLayout mainHeader={<Header />}>
+        <div className="w-full flex items-center justify-center">
+          <div className="flex-1 flex-col max-w-2xl">
             <FRPSFormCard />
           </div>
         </div>
-      </Providers>
-    </RootLayout>
+      </RootLayout>
+    </Providers>
   )
 }

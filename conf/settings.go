@@ -1,9 +1,12 @@
 package conf
 
 import (
+	"context"
 	"fmt"
 	"os"
 
+	"github.com/VaalaCat/frp-panel/common"
+	"github.com/VaalaCat/frp-panel/logger"
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
@@ -26,9 +29,10 @@ type Config struct {
 		APIPort                   int    `env:"API_PORT" env-default:"9000" env-description:"master api port"`
 		APIHost                   string `env:"API_HOST" env-description:"master host, can behind proxy like cdn"`
 		APIScheme                 string `env:"API_SCHEME" env-default:"http" env-description:"master api scheme"`
-		CacheSize                 int    `env:"CACHE_SIZE" env-default:"100" env-description:"cache size in MB"`
+		CacheSize                 int    `env:"CACHE_SIZE" env-default:"10" env-description:"cache size in MB"`
 		RPCHost                   string `env:"RPC_HOST" env-default:"127.0.0.1" env-description:"master host, is a public ip or domain"`
 		RPCPort                   int    `env:"RPC_PORT" env-default:"9001" env-description:"master rpc port"`
+		CompatibleMode            bool   `env:"COMPATIBLE_MODE" env-default:"false" env-description:"compatible mode, for official frp client"`
 		InternalFRPServerHost     string `env:"INTERNAL_FRP_SERVER_HOST" env-description:"internal frp server host, used for client connection"`
 		InternalFRPServerPort     int    `env:"INTERNAL_FRP_SERVER_PORT" env-default:"9002" env-description:"internal frp server port, used for client connection"`
 		InternalFRPAuthServerHost string `env:"INTERNAL_FRP_AUTH_SERVER_HOST" env-default:"127.0.0.1" env-description:"internal frp auth server host"`
@@ -40,17 +44,19 @@ type Config struct {
 	} `env-prefix:"SERVER_"`
 	DB struct {
 		Type string `env:"TYPE" env-default:"sqlite3" env-description:"db type, mysql or sqlite3 and so on"`
-		DSN  string `env:"DSN" env-default:"data.db" env-description:"db dsn, for sqlite is path, other is dsn, look at https://github.com/go-sql-driver/mysql#dsn-data-source-name"`
+		DSN  string `env:"DSN" env-default:"/data/data.db" env-description:"db dsn, for sqlite is path, other is dsn, look at https://github.com/go-sql-driver/mysql#dsn-data-source-name"`
 	} `env-prefix:"DB_"`
 	Client struct {
 		ID     string `env:"ID" env-description:"client id"`
 		Secret string `env:"SECRET" env-description:"client secret"`
 	} `env-prefix:"CLIENT_"`
+	IsDebug bool `env:"IS_DEBUG" env-default:"false" env-description:"is debug mode"`
 }
 
 var (
 	config     *Config
 	ClientCred credentials.TransportCredentials
+	Version    string
 )
 
 func Get() *Config {
@@ -61,25 +67,20 @@ func InitConfig() {
 	var (
 		err        error
 		useEnvFile bool
+		ctx        = context.Background()
 	)
 
+	// 越前面优先级越高，后面的不会覆盖前面的
 	envFiles := []string{
-		".env",
-		"/etc/frpp/.env",
+		common.CurEnvPath,
+		common.SysEnvPath,
 	}
 
-	for i, envFile := range envFiles {
+	for _, envFile := range envFiles {
 		if err = godotenv.Load(envFile); err == nil {
-			logrus.Infof("load env file success: %s", envFile)
+			logger.Logger(ctx).Infof("load env file success: %s", envFile)
 			useEnvFile = true
-			break
 		}
-		if i == len(envFiles)-1 {
-			logrus.Errorf("cannot load env file: %s, error: %v", envFile, err)
-			useEnvFile = false
-			break
-		}
-		logrus.Infof("cannot load env file: %s, error: %v, try next", envFile, err)
 	}
 
 	if !useEnvFile {

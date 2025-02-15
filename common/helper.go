@@ -4,14 +4,18 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/VaalaCat/frp-panel/logger"
 	"github.com/VaalaCat/frp-panel/pb"
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 )
 
 func GlobalClientID(username, clientType, clientID string) string {
 	return fmt.Sprintf("%s.%s.%s", username, clientType, clientID)
+}
+
+func ShadowedClientID(clientID string, shadowCount int64) string {
+	return fmt.Sprintf("%s@%d", clientID, shadowCount)
 }
 
 func Wrapper[T ReqType, U RespType](handler func(context.Context, *T) (*U, error)) func(c *gin.Context) {
@@ -38,14 +42,14 @@ func WrapperServerMsg[T ReqType, U RespType](req *pb.ServerMessage, handler func
 	r := new(T)
 	GetServerMessageRequest(req.GetData(), r, proto.Unmarshal)
 	if err := GetServerMessageRequest(req.GetData(), r, proto.Unmarshal); err != nil {
-		logrus.WithError(err).Errorf("cannot unmarshal")
+		logger.Logger(context.Background()).WithError(err).Errorf("cannot unmarshal")
 		return nil
 	}
 
 	ctx := context.Background()
 	resp, err := handler(ctx, r)
 	if err != nil {
-		logrus.WithError(err).Errorf("handler error")
+		logger.Logger(context.Background()).WithError(err).Errorf("handler error")
 		return &pb.ClientMessage{
 			Event: pb.Event_EVENT_ERROR,
 			Data:  []byte(err.Error()),
@@ -54,7 +58,7 @@ func WrapperServerMsg[T ReqType, U RespType](req *pb.ServerMessage, handler func
 
 	cliMsg, err := ProtoResp(resp)
 	if err != nil {
-		logrus.WithError(err).Errorf("cannot marshal")
+		logger.Logger(context.Background()).WithError(err).Errorf("cannot marshal")
 		return &pb.ClientMessage{
 			Event: pb.Event_EVENT_ERROR,
 			Data:  []byte(err.Error()),

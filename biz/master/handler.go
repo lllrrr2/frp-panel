@@ -6,7 +6,10 @@ import (
 	"github.com/VaalaCat/frp-panel/biz/master/auth"
 	"github.com/VaalaCat/frp-panel/biz/master/client"
 	"github.com/VaalaCat/frp-panel/biz/master/platform"
+	"github.com/VaalaCat/frp-panel/biz/master/proxy"
 	"github.com/VaalaCat/frp-panel/biz/master/server"
+	"github.com/VaalaCat/frp-panel/biz/master/shell"
+	"github.com/VaalaCat/frp-panel/biz/master/streamlog"
 	"github.com/VaalaCat/frp-panel/biz/master/user"
 	"github.com/VaalaCat/frp-panel/common"
 	"github.com/VaalaCat/frp-panel/middleware"
@@ -69,5 +72,17 @@ func ConfigureRouter(router *gin.Engine) {
 			frpsRouter.POST("/update", common.Wrapper(server.UpdateFrpsHander))
 			frpsRouter.POST("/delete", common.Wrapper(server.RemoveFrpsHandler))
 		}
+		proxyRouter := v1.Group("/proxy", middleware.JWTAuth, middleware.AuthCtx)
+		{
+			proxyRouter.POST("/get_by_cid", common.Wrapper(proxy.GetProxyStatsByClientID))
+			proxyRouter.POST("/get_by_sid", common.Wrapper(proxy.GetProxyStatsByServerID))
+			proxyRouter.POST("/list_configs", common.Wrapper(proxy.ListProxyConfigs))
+			proxyRouter.POST("/create_config", common.Wrapper(proxy.CreateProxyConfig))
+			proxyRouter.POST("/update_config", common.Wrapper(proxy.UpdateProxyConfig))
+			proxyRouter.POST("/delete_config", common.Wrapper(proxy.DeleteProxyConfig))
+			proxyRouter.POST("/get_config", common.Wrapper(proxy.GetProxyConfig))
+		}
+		v1.GET("/pty/:clientID", middleware.JWTAuth, middleware.AuthCtx, shell.PTYHandler)
+		v1.GET("/log", middleware.JWTAuth, middleware.AuthCtx, streamlog.GetLogHander)
 	}
 }

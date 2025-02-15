@@ -1,8 +1,12 @@
 package main
 
 import (
+	"context"
+
 	bizclient "github.com/VaalaCat/frp-panel/biz/client"
+	"github.com/VaalaCat/frp-panel/common"
 	"github.com/VaalaCat/frp-panel/conf"
+	"github.com/VaalaCat/frp-panel/logger"
 	"github.com/VaalaCat/frp-panel/pb"
 	"github.com/VaalaCat/frp-panel/rpc"
 	"github.com/VaalaCat/frp-panel/services/rpcclient"
@@ -15,11 +19,12 @@ import (
 
 func runClient() {
 	var (
+		c            = context.Background()
 		clientID     = conf.Get().Client.ID
 		clientSecret = conf.Get().Client.Secret
 	)
 	crypto.DefaultSalt = conf.Get().App.Secret
-	logrus.Infof("start to run client")
+	logger.Logger(c).Infof("start to run client")
 	if len(clientSecret) == 0 {
 		logrus.Fatal("client secret cannot be empty")
 	}
@@ -43,7 +48,8 @@ func runClient() {
 	r := rpcclient.GetClientRPCSerivce()
 	defer r.Stop()
 
-	w := watcher.NewClient(bizclient.PullConfig, clientID, clientSecret)
+	w := watcher.NewClient()
+	w.AddDurationTask(common.PullConfigDuration, bizclient.PullConfig, clientID, clientSecret)
 	defer w.Stop()
 
 	initClientOnce(clientID, clientSecret)
@@ -57,6 +63,6 @@ func runClient() {
 func initClientOnce(clientID, clientSecret string) {
 	err := bizclient.PullConfig(clientID, clientSecret)
 	if err != nil {
-		logrus.WithError(err).Errorf("cannot pull client config, wait for retry")
+		logger.Logger(context.Background()).WithError(err).Errorf("cannot pull client config, wait for retry")
 	}
 }
